@@ -70,11 +70,67 @@ LibraryDefinition generateLibrary(
       .expand((e) => e)
       .toList();
 
-  final allClassesNames = queryDefinitions
+  /// Not equal classes
+  final notEqualClasses = <ClassDefinition>[];
+  final allClasses =
+      queryDefinitions.map((def) => def.classes).expand((c) => c);
+  allClasses.mergeDuplicatesBy((c) => c.name, (a, b) {
+    if (a is ClassDefinition &&
+        b is ClassDefinition &&
+        a.name == b.name &&
+        a != b) {
+      notEqualClasses
+        ..add(a)
+        ..add(b);
+    }
+    return a;
+  });
+
+  /// Grouped not equal classes
+  final groupedClasses = <Name, List<ClassDefinition>>{};
+  for (final c in notEqualClasses) {
+    groupedClasses.update(c.name, (a) => [...a, c], ifAbsent: () => [c]);
+  }
+
+  /// "Merged" signatures by their types
+  final mergedClasses = <Name, ClassDefinition>{};
+  for (final entry in groupedClasses.entries) {
+    final classDefinition = entry.value.first;
+    final allProps = entry.value.expand((e) => e.properties).toSet();
+    mergedClasses[entry.key] = ClassDefinition(
+      name: entry.key,
+      properties: allProps,
+      typeNameField: classDefinition.typeNameField,
+      mixins: classDefinition.mixins,
+      isInput: classDefinition.isInput,
+      implementations: classDefinition.implementations,
+      factoryPossibilities: classDefinition.factoryPossibilities,
+      extension: classDefinition.extension,
+    );
+  }
+
+  print('Merged classes: ${mergedClasses.keys.map((e) => e.name).toList()}');
+
+  /// Update query classes on "merged" classes
+  final newQueryDefinition = queryDefinitions.map((def) {
+    return QueryDefinition(
+      name: def.name,
+      operationName: def.operationName,
+      classes: def.classes.map((e) {
+        if (e is! ClassDefinition) return e;
+        return mergedClasses[e.name] ?? e;
+      }),
+      document: def.document,
+      generateHelpers: def.generateHelpers,
+      inputs: def.inputs,
+      suffix: def.suffix,
+    );
+  }).toList();
+
+  final allClassesNames = newQueryDefinition
       .map((def) => def.classes.map((c) => c))
       .expand((e) => e)
       .toList();
-
   allClassesNames.mergeDuplicatesBy((a) => a.name, (a, b) {
     if (a.name == b.name && a != b) {
       throw DuplicatedClassesException(a, b);
@@ -88,7 +144,7 @@ LibraryDefinition generateLibrary(
   final customImports = _extractCustomImports(schema, options);
   return LibraryDefinition(
     basename: basename,
-    queries: queryDefinitions,
+    queries: newQueryDefinition,
     customImports: customImports,
   );
 }
