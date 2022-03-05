@@ -95,16 +95,24 @@ LibraryDefinition generateLibrary(
   /// "Merged" signatures by their types
   final mergedClasses = <Name, ClassDefinition>{};
   for (final entry in groupedClasses.entries) {
-    final classDefinition = entry.value.first;
-    final allProps = entry.value.expand((e) => e.properties).toSet();
+    final definitions = entry.value;
+    final classDefinition = definitions.first;
+    final props = definitions.expand((e) => e.properties).toSet();
+    final mixins = definitions.expand((e) => e.mixins).toSet();
+    final implementations =
+        definitions.expand((e) => e.implementations).toSet();
+    final factories = <String, Name>{};
+    for (final classDefinition in definitions) {
+      factories.addAll(classDefinition.factoryPossibilities);
+    }
     mergedClasses[entry.key] = ClassDefinition(
       name: entry.key,
-      properties: allProps,
+      properties: props,
       typeNameField: classDefinition.typeNameField,
-      mixins: classDefinition.mixins,
+      mixins: mixins,
       isInput: classDefinition.isInput,
-      implementations: classDefinition.implementations,
-      factoryPossibilities: classDefinition.factoryPossibilities,
+      implementations: implementations,
+      factoryPossibilities: factories,
       extension: classDefinition.extension,
     );
   }
