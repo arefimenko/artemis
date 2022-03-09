@@ -27,10 +27,6 @@ List<String> _builderOptionsToExpectedOutputs(BuilderOptions builderOptions) {
   final schemaMapping =
       GeneratorOptions.fromJson(builderOptions.config).schemaMapping;
 
-  if (schemaMapping.isEmpty) {
-    throw MissingBuildConfigurationException('schema_mapping');
-  }
-
   if (schemaMapping.any((s) => s.output == null)) {
     throw MissingBuildConfigurationException('schema_mapping => output');
   }
