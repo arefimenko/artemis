@@ -3,7 +3,7 @@ import 'package:artemis/generator/data/enum_value_definition.dart';
 import 'package:artemis/generator/errors.dart';
 import 'package:code_builder/code_builder.dart';
 import 'package:collection/collection.dart' show IterableExtension;
-import 'package:dart_style/dart_style.dart';
+// import 'package:dart_style/dart_style.dart';
 // ignore: implementation_imports
 import 'package:gql_code_builder/src/ast.dart' as dart;
 import 'package:recase/recase.dart';
@@ -428,7 +428,7 @@ Spec generateLibrarySpec(LibraryDefinition definition) {
 /// Emit a [Spec] into a String, considering Dart formatting.
 String specToString(Spec spec) {
   final emitter = DartEmitter();
-  return DartFormatter().format(spec.accept(emitter).toString());
+  return spec.accept(emitter).toString();
 }
 
 /// Generate Dart code typings from a query or mutation and its response from
