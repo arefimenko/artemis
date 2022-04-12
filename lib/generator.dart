@@ -56,7 +56,20 @@ LibraryDefinition generateLibrary(
 
   schema.accept(canonicalVisitor);
 
-  final queryDefinitions = gqlDocs
+  final documentFragments = gqlDocs
+      .map((doc) => doc.definitions.whereType<FragmentDefinitionNode>())
+      .expand((e) => e)
+      .toList();
+
+  final documentsWithoutFragments = gqlDocs.map((doc) {
+    return DocumentNode(
+      definitions:
+          doc.definitions.where((e) => e is! FragmentDefinitionNode).toList(),
+      span: doc.span,
+    );
+  }).toList();
+
+  final queryDefinitions = documentsWithoutFragments
       .map((doc) => generateDefinitions(
             schema: schema,
             typeDefinitionNodeVisitor: typeDefinitionNodeVisitor,
@@ -64,7 +77,10 @@ LibraryDefinition generateLibrary(
             document: doc,
             options: options,
             schemaMap: schemaMap,
-            fragmentsCommon: fragmentsCommon,
+            fragmentsCommon: [
+              ...documentFragments,
+              ...fragmentsCommon,
+            ],
             canonicalVisitor: canonicalVisitor,
           ))
       .expand((e) => e)
@@ -174,12 +190,13 @@ Set<FragmentDefinitionNode> _extractFragments(SelectionSetNode? selectionSet,
     selectionSet.selections
         .whereType<FragmentSpreadNode>()
         .forEach((selection) {
-      final fragmentDefinitions = fragmentsCommon.firstWhere(
-          (fragmentDefinition) =>
-              fragmentDefinition.name.value == selection.name.value);
-      result.add(fragmentDefinitions);
-      result.addAll(
-          _extractFragments(fragmentDefinitions.selectionSet, fragmentsCommon));
+      final fragmentDefinitions = fragmentsCommon.where((fragmentDefinition) =>
+          fragmentDefinition.name.value == selection.name.value);
+      result.addAll(fragmentDefinitions);
+      for (var fragmentDefinition in fragmentDefinitions) {
+        result.addAll(_extractFragments(
+            fragmentDefinition.selectionSet, fragmentsCommon));
+      }
     });
   }
   return result;
@@ -197,31 +214,31 @@ Iterable<QueryDefinition> generateDefinitions({
   required List<FragmentDefinitionNode> fragmentsCommon,
   required CanonicalVisitor canonicalVisitor,
 }) {
-  final documentFragments =
-      document.definitions.whereType<FragmentDefinitionNode>();
+  // final documentFragments =
+  //     document.definitions.whereType<FragmentDefinitionNode>();
 
-  if (documentFragments.isNotEmpty && fragmentsCommon.isNotEmpty) {
-    throw FragmentIgnoreException();
-  }
+  // if (documentFragments.isNotEmpty && fragmentsCommon.isNotEmpty) {
+  //   throw FragmentIgnoreException();
+  // }
 
   final operations =
       document.definitions.whereType<OperationDefinitionNode>().toList();
 
   return operations.map((operation) {
-    final fragments = <FragmentDefinitionNode>[];
+    // final fragments = <FragmentDefinitionNode>[
+    //   ...documentFragments,
+    // ];
     final definitions = document.definitions
         // filtering unused operations
         .where((e) {
       return e is! OperationDefinitionNode || e == operation;
     }).toList();
 
-    if (fragmentsCommon.isEmpty) {
-      fragments.addAll(documentFragments);
-    } else {
+    if (fragmentsCommon.isNotEmpty) {
       final fragmentsOperation =
           _extractFragments(operation.selectionSet, fragmentsCommon);
       definitions.addAll(fragmentsOperation);
-      fragments.addAll(fragmentsOperation);
+      // fragments.addAll(fragmentsOperation);
     }
 
     final basename = p.basenameWithoutExtension(path).split('.').first;
@@ -282,7 +299,7 @@ Iterable<QueryDefinition> generateDefinitions({
       currentClassName: null,
       generatedClasses: [],
       inputsClasses: [],
-      fragments: fragments,
+      fragments: fragmentsCommon,
       usedEnums: {},
       usedInputObjects: {},
     );
@@ -306,6 +323,7 @@ Iterable<QueryDefinition> generateDefinitions({
       ],
       inputs: visitor.context.inputsClasses,
       generateHelpers: options.generateHelpers,
+      generateQueries: options.generateQueries,
       suffix: suffix,
     );
   });

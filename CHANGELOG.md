@@ -1,5 +1,33 @@
 # CHANGELOG
 
+## 7.6.1-beta
+
+- operation name constant
+
+## 7.6.2-beta
+
+- generate_queries flag to signify if query documents and operation names should be generated
+
+## 7.6.1-beta
+
+- operation name constant
+
+## 7.6.0-beta
+
+- package updates
+
+## 7.5.0-beta
+
+- there is no need to use `fragments_glob` any more just specify the glob which will include all your graphql docs
+
+## 7.4.0-beta
+
+- allow using file fragments and common fragments at the same time
+
+## 7.3.3-beta
+
+- fix https://github.com/comigor/artemis/issues/373
+
 ## 7.3.2-beta
 
 - performance improvements-2
